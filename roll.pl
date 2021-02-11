@@ -1,54 +1,147 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
+# vi: et sts=4 sw=4 ts=4
 use strict;
+use warnings;
 
 # D&D rolling script (custom random number generator)
 #
 # for example: '2d10' will roll two d-10's and output their values, plus a sum,
 # '3x4d6' will roll four d-6's in three separate throws and output all values,
 # plus a sum for each throw, plus a total sum
+#
+# Script first conceived 2009-08-26
 
-use constant DEBUG	=> 0;
+#use constant DEBUG => 1;
 
-use Getopt::Std	qw/ getopts /;
+use Getopt::Std qw/ getopts /;
 
-my %opts = (
-	'o'	=> 0, # order dice output?
-);
+MAIN: {
+    my %opts = (
+        o   => 0, # order dice output?
+    );
 
-&getopts('o', \%opts);
+    &getopts('o', \%opts);
 
-foreach my $throw_type (@ARGV) {
+    foreach my $throw_type (@ARGV) {
+        print Dice::Roll->new(
+            $throw_type,
+            ordered => $opts{o},
+        ), "\n";
+    }
+}
 
-	# trim flash (enables calling with 'd[num]' for a single die)
-	$throw_type =~ s/(^\D+|\D+$)//g;
+package Dice::Roll;
+use strict;
+use warnings;
+use overload '""' => 'as_string';
+use overload '0+' => 'total';
 
-	# interpret throw type backwards (golf)
-	my ($sides, $dice, $throws) = reverse split /\D/, $throw_type;
+sub new {
+    my $class = shift;
+    my $throw_type = shift;
 
-	$throws = 1 unless defined $throws;
-	$dice = 1 unless defined $dice;
+    my @dice;
+    foreach my $die_type (split /\+/, $throw_type) {
+        my $mult = 1;
+        if ($die_type =~ /^(\d+)([Dd].+)$/) {
+            $mult = $1;
+            $die_type = $2;
+        }
+        while ($mult-- > 0) {
+            push @dice, Dice::Roll::Die->new($die_type);
+        }
+    }
 
-	print STDERR "throws: $throws, dice: $dice, sides: $sides\n"
-		if DEBUG;
-	# determine how many places to format the dice values to
-	my $value_format = '%' . length (int $sides) . 'd';
+    bless {
+        dice => \@dice,
+        @_,
+    }, $class
+}
 
-	foreach my $throw_number (1 .. $throws) {
-		print "throw ${throw_number}: " if $throws > 1;
-		my $throw_sum = 0;
-		my @dice_totals;
-		foreach my $die_number (1 .. $dice) {
-			my $die_value = 1 + int rand $sides;
-			$throw_sum += $die_value;
-			push @dice_totals, $die_value;
-		}
-		print ' [', join (']  [',
-			map {
-				sprintf $value_format, $_
-			} ($opts{'o'} ?
-				sort {$a <=> $b} @dice_totals :
-				@dice_totals)
-			), "]  = $throw_sum\n";
-	}
+sub dice {
+    my $self = shift;
+    if ($self->{ordered}) {
+        sort { $a->val <=> $b->val } @{$self->{dice}}
+    } else {
+        @{$self->{dice}}
+    }
+}
 
+sub total {
+    my $self = shift;
+    use List::Util qw/ sum /;
+    &sum(map { $_->val } $self->dice)
+}
+
+sub as_string {
+    my $self = shift;
+    sprintf ' %s  = %d',
+        (join '  ', $self->dice),
+        $self->total
+}
+
+package Dice::Roll::Die;
+use strict;
+use warnings;
+use overload '""' => 'as_string';
+use overload '0+' => 'val';
+
+sub new {
+    my $class = shift;
+    my $die_type = shift;
+    my ($sides, $val);
+    my $frozen = 0;
+    if ($die_type =~ /(\d+)$/) {
+        my $sides_or_val = $1;
+
+        if ($die_type =~ /^[Dd]/) {
+            $sides = $sides_or_val;
+        } else {
+            $val = $sides_or_val;
+            $frozen = 1;
+        }
+    } else {
+        die "Unrecognized die type: $die_type";
+    }
+    bless {
+        sides => $sides,
+        val => $val,
+        frozen => $frozen,
+        @_,
+    }, $class
+}
+
+sub freeze {
+    shift->{frozen} = 1;
+}
+
+sub roll {
+    my $self = shift;
+    my $val;
+    if (defined $self->{sides} && $self->{sides} > 0) {
+         return 1 + int rand $self->{sides};
+    }
+    die 'Unable to choose die value due to invalid number of sides';
+}
+
+sub val {
+    my $self = shift;
+    if (! defined $self->{val} || ! $self->{frozen}) {
+        $self->{val} = $self->roll;
+        $self->freeze;
+    }
+    $self->{val}
+}
+
+sub as_string {
+    my $self = shift;
+
+    my $pat;
+    if ($self->{sides}) {
+        # $pat = '[%' . length (int $self->{sides}) . 'd]';
+        $pat = '[%d]';
+    } else {
+        $pat = ' %d ';
+    }
+    sprintf $pat, $self->val;
 }
