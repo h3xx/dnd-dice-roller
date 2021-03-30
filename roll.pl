@@ -11,22 +11,40 @@ use warnings;
 #
 # Script first conceived 2009-08-26
 
-#use constant DEBUG => 1;
-
-use Getopt::Std qw/ getopts /;
+use Getopt::Long qw/ GetOptions /;
+Getopt::Long::Configure('no_ignore_case');
 
 MAIN: {
-    my %opts = (
-        o   => 0, # order dice output?
-    );
+    my ($discard_low, $discard_high, $throws) = (0, 0, 1);
 
-    &getopts('o', \%opts);
+    &GetOptions(
+        'discard-low=i' => \$discard_low,
+        'discard-high=i' => \$discard_high,
+        'throws=i' => \$throws,
+    ) || exit 2;
 
     foreach my $throw_type (@ARGV) {
-        print Dice::Roll->new(
-            $throw_type,
-            ordered => $opts{o},
-        ), "\n";
+        for (my $throw_num = 0; $throw_num < $throws; ++$throw_num) {
+            my $roll = Dice::Roll->new(
+                $throw_type,
+            );
+
+            # Perform discards
+            my @dice = $roll->dice_sorted;
+            for (my $i = 0; $i < $discard_low; ++$i) {
+                if (defined $dice[$i]) {
+                    $dice[$i]->discard;
+                }
+            }
+            @dice = reverse @dice;
+            for (my $i = 0; $i < $discard_high; ++$i) {
+                if (defined $dice[$i]) {
+                    $dice[$i]->discard;
+                }
+            }
+
+            print "$roll\n";
+        }
     }
 }
 
@@ -60,11 +78,12 @@ sub new {
 
 sub dice {
     my $self = shift;
-    if ($self->{ordered}) {
-        sort { $a->val <=> $b->val } @{$self->{dice}}
-    } else {
-        @{$self->{dice}}
-    }
+    @{$self->{dice}}
+}
+
+sub dice_sorted {
+    my $self = shift;
+    sort { $a->val <=> $b->val } $self->dice
 }
 
 sub total {
@@ -85,6 +104,8 @@ use strict;
 use warnings;
 use overload '""' => 'as_string';
 use overload '0+' => 'val';
+
+use Term::ANSIColor qw/ colored /;
 
 sub new {
     my $class = shift;
@@ -117,20 +138,34 @@ sub freeze {
 
 sub roll {
     my $self = shift;
-    my $val;
     if (defined $self->{sides} && $self->{sides} > 0) {
          return 1 + int rand $self->{sides};
     }
     die 'Unable to choose die value due to invalid number of sides';
 }
 
-sub val {
+sub face {
     my $self = shift;
-    if (! defined $self->{val} || ! $self->{frozen}) {
-        $self->{val} = $self->roll;
+    if (! defined $self->{face} || ! $self->{frozen}) {
+        $self->{face} = $self->roll;
         $self->freeze;
     }
-    $self->{val}
+    $self->{face}
+}
+
+sub val {
+    my $self = shift;
+    if ($self->{discarded}) {
+        return 0;
+    } else {
+        return $self->face;
+    }
+}
+
+sub discard {
+    my $self = shift;
+    $self->{color} = 'bright_black';
+    $self->{discarded} = 1;
 }
 
 sub as_string {
@@ -143,5 +178,8 @@ sub as_string {
     } else {
         $pat = ' %d ';
     }
-    sprintf $pat, $self->val;
+    if ($self->{color}) {
+        $pat = &colored($pat, $self->{color});
+    }
+    sprintf $pat, $self->face;
 }
