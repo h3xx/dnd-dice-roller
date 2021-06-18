@@ -59,8 +59,11 @@ MAIN: {
 package Dice::Roll;
 use strict;
 use warnings;
-use overload '""' => 'as_string';
-use overload '0+' => 'total';
+use overload
+    '""' => 'as_string',
+    '0+' => 'total',
+    fallback => 1,
+    ;
 
 sub new {
     my $class = shift;
@@ -97,7 +100,7 @@ sub dice_sorted {
 sub total {
     my $self = shift;
     use List::Util qw/ sum /;
-    &sum(map { $_->val } $self->dice)
+    &sum($self->dice)
 }
 
 sub as_string {
@@ -110,8 +113,11 @@ sub as_string {
 package Dice::Roll::Die;
 use strict;
 use warnings;
-use overload '""' => 'as_string';
-use overload '0+' => 'val';
+use overload
+    '0+' => 'val',
+    '""' => 'as_string',
+    fallback => 1,
+    ;
 
 use Term::ANSIColor qw/ colored /;
 
