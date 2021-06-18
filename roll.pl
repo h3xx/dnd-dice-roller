@@ -15,7 +15,11 @@ use Getopt::Long qw/ GetOptions /;
 Getopt::Long::Configure('no_ignore_case');
 
 MAIN: {
-    my ($discard_low, $discard_high, $throws) = (0, 0, 1);
+    my $throws = 1;
+    my (
+        $discard_low,
+        $discard_high,
+    );
 
     &GetOptions(
         'discard-low=i' => \$discard_low,
@@ -31,15 +35,19 @@ MAIN: {
 
             # Perform discards
             my @dice = $roll->dice_sorted;
-            for (my $i = 0; $i < $discard_low; ++$i) {
-                if (defined $dice[$i]) {
-                    $dice[$i]->discard;
+            if (defined $discard_low) {
+                for (my $i = 0; $i < $discard_low; ++$i) {
+                    if (defined $dice[$i]) {
+                        $dice[$i]->discard;
+                    }
                 }
             }
-            @dice = reverse @dice;
-            for (my $i = 0; $i < $discard_high; ++$i) {
-                if (defined $dice[$i]) {
-                    $dice[$i]->discard;
+            if (defined $discard_high) {
+                @dice = reverse @dice;
+                for (my $i = 0; $i < $discard_high; ++$i) {
+                    if (defined $dice[$i]) {
+                        $dice[$i]->discard;
+                    }
                 }
             }
 
