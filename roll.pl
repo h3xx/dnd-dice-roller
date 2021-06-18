@@ -79,8 +79,7 @@ use overload
     ;
 
 sub new {
-    my $class = shift;
-    my $throw_type = shift;
+    my ($class, $throw_type) = @_;
 
     my @dice;
     foreach my $die_type (split /\+/, $throw_type) {
@@ -96,7 +95,6 @@ sub new {
 
     bless {
         dice => \@dice,
-        @_,
     }, $class
 }
 
@@ -135,8 +133,7 @@ use overload
 use Term::ANSIColor qw/ colored /;
 
 sub new {
-    my $class = shift;
-    my $die_type = shift;
+    my ($class, $die_type) = @_;
     my ($sides, $val, $face);
     my $frozen = 0;
     if ($die_type =~ /(\d+)$/) {
@@ -157,7 +154,6 @@ sub new {
         val => $val,
         frozen => $frozen,
         face => $face,
-        @_,
     }, $class
 }
 
