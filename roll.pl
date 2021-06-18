@@ -19,14 +19,18 @@ MAIN: {
     my (
         $discard_low,
         $discard_high,
+        $print_total,
     );
 
     &GetOptions(
         'discard-low=i' => \$discard_low,
         'discard-high=i' => \$discard_high,
         'throws=i' => \$throws,
+        'total' => \$print_total, 'sum' => \$print_total,
+        'no-total' => sub { $print_total = 0 }, 'no-sum' => sub { $print_total = 0 },
     ) || exit 2;
 
+    my @rolls;
     foreach my $throw_type (@ARGV) {
         for (my $throw_num = 0; $throw_num < $throws; ++$throw_num) {
             my $roll = Dice::Roll->new(
@@ -52,7 +56,16 @@ MAIN: {
             }
 
             print "$roll\n";
+            push @rolls, $roll;
         }
+    }
+
+    # Print summation
+    if (!defined $print_total && @rolls > 1
+        || $print_total
+    ) {
+        use List::Util qw/ sum /;
+        printf "Total: %d\n", &sum(0, @rolls);
     }
 }
 
