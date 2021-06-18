@@ -110,7 +110,7 @@ use Term::ANSIColor qw/ colored /;
 sub new {
     my $class = shift;
     my $die_type = shift;
-    my ($sides, $val);
+    my ($sides, $val, $face);
     my $frozen = 0;
     if ($die_type =~ /(\d+)$/) {
         my $sides_or_val = $1;
@@ -118,7 +118,8 @@ sub new {
         if ($die_type =~ /^[Dd]/) {
             $sides = $sides_or_val;
         } else {
-            $val = $sides_or_val;
+            # Single constant number
+            $val = $face = $sides_or_val;
             $frozen = 1;
         }
     } else {
@@ -128,6 +129,7 @@ sub new {
         sides => $sides,
         val => $val,
         frozen => $frozen,
+        face => $face,
         @_,
     }, $class
 }
