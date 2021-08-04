@@ -30,9 +30,20 @@ MAIN: {
         $discard_low,
         $discard_high,
         $print_total,
+        @throw_types,
     );
 
+    # Roll recipe for rolling up stats for a 5e character sheet
+    my $_recipe_5e_character = sub {
+        $discard_low = 1;
+        $discard_high = 0;
+        $print_total = 0;
+        @throw_types = qw/ 4d6 /;
+        $throws = 6;
+    };
+
     &GetOptions(
+        'char-5e' => $_recipe_5e_character,
         'discard-low=i' => \$discard_low,
         'discard-high=i' => \$discard_high,
         'throws=i' => \$throws,
@@ -40,8 +51,10 @@ MAIN: {
         'no-total' => sub { $print_total = 0 }, 'no-sum' => sub { $print_total = 0 },
     ) || exit 2;
 
+    @throw_types = @ARGV unless @throw_types;
+
     my @rolls;
-    foreach my $throw_type (@ARGV) {
+    foreach my $throw_type (@throw_types) {
         for (my $throw_num = 0; $throw_num < $throws; ++$throw_num) {
             my $roll = Dice::Roll->new(
                 $throw_type,
