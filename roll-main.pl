@@ -63,9 +63,8 @@ use Pod::Usage qw/ pod2usage /;
 
 # :squash-ignore-start:
 # (this prepends to the load path)
-use File::Basename  qw/ dirname /;
-use Cwd             qw/ realpath /;
-use lib &dirname(&realpath($0));
+use FindBin qw//;
+use lib $FindBin::RealBin;
 # :squash-ignore-end:
 
 require Dice::Roll;
